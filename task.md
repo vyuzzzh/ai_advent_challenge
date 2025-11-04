@@ -1,0 +1,2 @@
+- create simple window for ai agent conversation
+- ai agent must use yandex gpt api
