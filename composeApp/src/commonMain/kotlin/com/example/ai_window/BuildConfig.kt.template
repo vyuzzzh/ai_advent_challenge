@@ -1,0 +1,14 @@
+package com.example.ai_window
+
+/**
+ * Build configuration constants.
+ *
+ * ИНСТРУКЦИЯ:
+ * 1. Скопируйте этот файл как BuildConfig.kt
+ * 2. Замените YOUR_API_KEY_HERE и YOUR_FOLDER_ID_HERE на ваши реальные значения
+ * 3. BuildConfig.kt добавлен в .gitignore и не будет закоммичен
+ */
+object BuildConfig {
+    const val YANDEX_API_KEY = "YOUR_API_KEY_HERE"
+    const val YANDEX_FOLDER_ID = "YOUR_FOLDER_ID_HERE"
+}
