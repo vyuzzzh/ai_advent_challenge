@@ -169,24 +169,119 @@ fun MessageBubble(message: ChatMessage) {
             .padding(vertical = 4.dp),
         horizontalArrangement = if (message.isUser) Arrangement.End else Arrangement.Start
     ) {
-        Surface(
-            shape = RoundedCornerShape(12.dp),
-            color = if (message.isUser) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.secondaryContainer
-            },
+        Column(
             modifier = Modifier.widthIn(max = 300.dp)
         ) {
-            Text(
-                text = message.text,
-                modifier = Modifier.padding(12.dp),
+            // Message content
+            Surface(
+                shape = RoundedCornerShape(12.dp),
                 color = if (message.isUser) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
+                    MaterialTheme.colorScheme.primaryContainer
                 } else {
-                    MaterialTheme.colorScheme.onSecondaryContainer
+                    MaterialTheme.colorScheme.secondaryContainer
                 }
-            )
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp)
+                ) {
+                    // Title (жирным шрифтом)
+                    message.title?.takeIf { it.isNotBlank() }?.let { title ->
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            color = if (message.isUser) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSecondaryContainer
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+
+                    // Content
+                    Text(
+                        text = message.text,
+                        color = if (message.isUser) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSecondaryContainer
+                        }
+                    )
+                }
+            }
+
+            // NEW: Display metadata for AI messages
+            message.metadata?.let { metadata ->
+                Row(
+                    modifier = Modifier
+                        .padding(top = 4.dp, start = 8.dp)
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Confidence badge
+                    ConfidenceBadge(metadata.confidence)
+
+                    // Category chip
+                    CategoryChip(metadata.category)
+                }
+            }
+
+            // NEW: Show parse warning if present
+            if (message.parseWarning != null) {
+                Text(
+                    text = "⚠️ ${message.parseWarning}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 4.dp, start = 8.dp)
+                )
+            }
         }
+    }
+}
+
+@Composable
+fun ConfidenceBadge(confidence: Double) {
+    val color = when {
+        confidence >= 0.7 -> androidx.compose.ui.graphics.Color(0xFF4CAF50)  // Green
+        confidence >= 0.4 -> androidx.compose.ui.graphics.Color(0xFFFFA500)  // Orange
+        else -> androidx.compose.ui.graphics.Color(0xFFF44336)  // Red
+    }
+
+    Surface(
+        color = color.copy(alpha = 0.2f),
+        shape = RoundedCornerShape(4.dp)
+    ) {
+        Text(
+            text = "Confidence: ${(confidence * 100).toInt()}%",
+            style = MaterialTheme.typography.labelSmall,
+            color = color,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+        )
+    }
+}
+
+@Composable
+fun CategoryChip(category: String) {
+    val categoryIcon = when (category.lowercase()) {
+        "factual" -> "📚"
+        "opinion" -> "💭"
+        "suggestion" -> "💡"
+        "error" -> "❌"
+        "general" -> "💬"
+        "plaintext_fallback" -> "📝"
+        "manual_extraction" -> "🔧"
+        else -> "❓"
+    }
+
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(4.dp)
+    ) {
+        Text(
+            text = "$categoryIcon $category",
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+        )
     }
 }
