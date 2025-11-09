@@ -14,115 +14,29 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ai_window.model.ChatMessage
 import com.example.ai_window.model.ChatState
-import org.jetbrains.compose.ui.tooling.preview.Preview
 
 @Composable
-@Preview
-fun App() {
-    MaterialTheme {
-        // State for navigation between modes
-        var currentScreen by remember { mutableStateOf<Screen>(Screen.Chat) }
-
-        // ViewModels
-        val chatViewModel: ChatViewModel = viewModel {
-            ChatViewModel(
-                apiKey = BuildConfig.YANDEX_API_KEY,
-                folderId = BuildConfig.YANDEX_FOLDER_ID
-            )
-        }
-
-        val planningViewModel: PlanningViewModel = viewModel {
-            PlanningViewModel(
-                apiKey = BuildConfig.YANDEX_API_KEY,
-                folderId = BuildConfig.YANDEX_FOLDER_ID
-            )
-        }
-
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Navigation tabs
-            NavigationBar(
-                selectedScreen = currentScreen,
-                onScreenSelected = { currentScreen = it }
-            )
-
-            // Screen content
-            when (currentScreen) {
-                Screen.Chat -> ChatScreen(chatViewModel)
-                Screen.Planning -> PlanningScreen(planningViewModel)
-            }
-        }
-    }
-}
-
-// Screen enum
-enum class Screen(val displayName: String, val icon: String) {
-    Chat("Чат", "💬"),
-    Planning("ТЗ", "📋")
-}
-
-@Composable
-fun NavigationBar(
-    selectedScreen: Screen,
-    onScreenSelected: (Screen) -> Unit
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        tonalElevation = 3.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(4.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            Screen.entries.forEach { screen ->
-                NavigationTab(
-                    screen = screen,
-                    isSelected = screen == selectedScreen,
-                    onClick = { onScreenSelected(screen) }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun RowScope.NavigationTab(
-    screen: Screen,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = if (isSelected)
-                MaterialTheme.colorScheme.primaryContainer
-            else
-                MaterialTheme.colorScheme.surfaceVariant,
-            contentColor = if (isSelected)
-                MaterialTheme.colorScheme.onPrimaryContainer
-            else
-                MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    ) {
-        Text("${screen.icon} ${screen.displayName}")
-    }
-}
-
-@Composable
-fun ChatScreen(viewModel: ChatViewModel) {
+fun PlanningScreen(viewModel: PlanningViewModel) {
     val messages by viewModel.messages.collectAsStateWithLifecycle()
     val chatState by viewModel.chatState.collectAsStateWithLifecycle()
     val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
+    val sectionsCompleted by viewModel.sectionsCompleted.collectAsStateWithLifecycle()
+    val questionsAsked by viewModel.questionsAsked.collectAsStateWithLifecycle()
+    val isSpecificationComplete by viewModel.isSpecificationComplete.collectAsStateWithLifecycle()
 
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
-    // Автоматическая прокрутка к последнему сообщению
+    // Auto-start session on first composition
+    LaunchedEffect(Unit) {
+        if (messages.isEmpty()) {
+            viewModel.startSession()
+        }
+    }
+
+    // Auto-scroll to last message
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
@@ -134,23 +48,36 @@ fun ChatScreen(viewModel: ChatViewModel) {
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // Заголовок
+        // Header with progress
         TopAppBar(
-            title = { Text("AI Чат (Yandex GPT)") },
+            title = {
+                if (!isSpecificationComplete) {
+                    Text("📋 Сбор требований")
+                } else {
+                    Text("✅ Техническое задание готово")
+                }
+            },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
             ),
             actions = {
                 if (messages.isNotEmpty()) {
-                    IconButton(onClick = { viewModel.clearChat() }) {
-                        Text("🗑️")
+                    IconButton(onClick = { viewModel.resetSession() }) {
+                        Text("🔄")
                     }
                 }
             }
         )
 
-        // Область сообщений
+        // Progress indicator - indeterminate while gathering requirements
+        if (!isSpecificationComplete && chatState == ChatState.LOADING) {
+            LinearProgressIndicator(
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+
+        // Messages area
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
@@ -159,10 +86,10 @@ fun ChatScreen(viewModel: ChatViewModel) {
             state = listState
         ) {
             items(messages) { message ->
-                MessageBubble(message)
+                PlanningMessageBubble(message)
             }
 
-            // Индикатор загрузки
+            // Loading indicator
             if (chatState == ChatState.LOADING) {
                 item {
                     Box(
@@ -177,7 +104,7 @@ fun ChatScreen(viewModel: ChatViewModel) {
             }
         }
 
-        // Сообщение об ошибке
+        // Error message
         errorMessage?.let { error ->
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -202,7 +129,7 @@ fun ChatScreen(viewModel: ChatViewModel) {
             }
         }
 
-        // Поле ввода
+        // Input field (disabled when spec is complete)
         Surface(
             modifier = Modifier.fillMaxWidth(),
             tonalElevation = 3.dp
@@ -217,8 +144,15 @@ fun ChatScreen(viewModel: ChatViewModel) {
                     value = inputText,
                     onValueChange = { inputText = it },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Введите сообщение...") },
-                    enabled = chatState != ChatState.LOADING,
+                    placeholder = {
+                        Text(
+                            if (isSpecificationComplete)
+                                "ТЗ готово. Нажмите 🔄 для нового проекта"
+                            else
+                                "Ответьте на вопрос..."
+                        )
+                    },
+                    enabled = chatState != ChatState.LOADING && !isSpecificationComplete,
                     maxLines = 4
                 )
 
@@ -231,7 +165,7 @@ fun ChatScreen(viewModel: ChatViewModel) {
                             inputText = ""
                         }
                     },
-                    enabled = inputText.isNotBlank() && chatState != ChatState.LOADING
+                    enabled = inputText.isNotBlank() && chatState != ChatState.LOADING && !isSpecificationComplete
                 ) {
                     Text("➤")
                 }
@@ -240,8 +174,9 @@ fun ChatScreen(viewModel: ChatViewModel) {
     }
 }
 
+// Planning-specific message bubble without metadata display
 @Composable
-fun MessageBubble(message: ChatMessage) {
+fun PlanningMessageBubble(message: ChatMessage) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -290,23 +225,7 @@ fun MessageBubble(message: ChatMessage) {
                 }
             }
 
-            // NEW: Display metadata for AI messages
-            message.metadata?.let { metadata ->
-                Row(
-                    modifier = Modifier
-                        .padding(top = 4.dp, start = 8.dp)
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Confidence badge
-                    ConfidenceBadge(metadata.confidence)
-
-                    // Category chip
-                    CategoryChip(metadata.category)
-                }
-            }
-
-            // NEW: Show parse warning if present
+            // Show parse warning if present (but no metadata badges)
             if (message.parseWarning != null) {
                 Text(
                     text = "⚠️ ${message.parseWarning}",
@@ -316,51 +235,5 @@ fun MessageBubble(message: ChatMessage) {
                 )
             }
         }
-    }
-}
-
-@Composable
-fun ConfidenceBadge(confidence: Double) {
-    val color = when {
-        confidence >= 0.7 -> androidx.compose.ui.graphics.Color(0xFF4CAF50)  // Green
-        confidence >= 0.4 -> androidx.compose.ui.graphics.Color(0xFFFFA500)  // Orange
-        else -> androidx.compose.ui.graphics.Color(0xFFF44336)  // Red
-    }
-
-    Surface(
-        color = color.copy(alpha = 0.2f),
-        shape = RoundedCornerShape(4.dp)
-    ) {
-        Text(
-            text = "Confidence: ${(confidence * 100).toInt()}%",
-            style = MaterialTheme.typography.labelSmall,
-            color = color,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-        )
-    }
-}
-
-@Composable
-fun CategoryChip(category: String) {
-    val categoryIcon = when (category.lowercase()) {
-        "factual" -> "📚"
-        "opinion" -> "💭"
-        "suggestion" -> "💡"
-        "error" -> "❌"
-        "general" -> "💬"
-        "plaintext_fallback" -> "📝"
-        "manual_extraction" -> "🔧"
-        else -> "❓"
-    }
-
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        shape = RoundedCornerShape(4.dp)
-    ) {
-        Text(
-            text = "$categoryIcon $category",
-            style = MaterialTheme.typography.labelSmall,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-        )
     }
 }
