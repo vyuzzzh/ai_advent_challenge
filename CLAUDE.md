@@ -4,107 +4,156 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Обзор проекта
 
-Это Kotlin Multiplatform проект для создания кроссплатформенного приложения с поддержкой Android, iOS, Desktop (JVM), Web (JS/WASM) и сервера на Ktor.
+Kotlin Multiplatform приложение для взаимодействия с Yandex GPT API через прокси-сервер. Поддерживает Android, iOS, Desktop (JVM), Web (JS/WASM) с единой кодовой базой для UI и бизнес-логики.
 
 ## Архитектура проекта
 
 ### Модульная структура
-- **composeApp** - UI слой с Compose Multiplatform для всех клиентских платформ
-- **shared** - общая бизнес-логика для всех платформ
-- **server** - Ktor сервер на порту 8080
-- **iosApp** - iOS приложение с интеграцией Kotlin framework
+- **composeApp** - UI слой (Compose Multiplatform): screens, ViewModels, UI компоненты
+- **shared** - бизнес-логика: модели данных, сервисы, expect/actual реализации для платформ
+- **server** - Ktor прокси-сервер для безопасной работы с Yandex GPT API (скрывает API ключи от клиентов)
+- **iosApp** - iOS точка входа с интеграцией Kotlin framework
 
-### Платформо-специфичные точки входа
-- Android: `composeApp/src/androidMain/kotlin/com/example/ai_window/MainActivity.kt`
-- Desktop: `composeApp/src/jvmMain/kotlin/com/example/ai_window/main.kt`
-- Web: `composeApp/src/webMain/kotlin/com/example/ai_window/main.kt`
-- Server: `server/src/main/kotlin/com/example/ai_window/Application.kt`
+### Ключевые архитектурные решения
 
-### Паттерн Platform абстракции
-Проект использует интерфейс `Platform` в shared модуле с платформо-специфичными реализациями через expect/actual механизм Kotlin Multiplatform.
+**Прокси-паттерн для API**:
+- Клиентские приложения не содержат API ключи
+- Запросы идут через Ktor сервер (`server/src/main/kotlin/com/example/ai_window/Application.kt`)
+- Сервер добавляет авторизацию и проксирует запросы к Yandex API
+
+**Платформо-специфичный код (expect/actual)**:
+- Общий интерфейс: `shared/src/commonMain/kotlin/com/example/ai_window/Platform.kt`
+- Реализации: `shared/src/{androidMain,iosMain,jvmMain,jsMain,wasmJsMain}/kotlin/com/example/ai_window/Platform.*.kt`
+
+**Два подхода к структурированным ответам**:
+1. Native JSON Schema (`useNativeJsonSchema = true`): использует встроенную поддержку JSON Schema в Yandex API
+2. Prompt-based (`useNativeJsonSchema = false`): инструкции формата в промпте
+
+Настраивается в `shared/src/commonMain/kotlin/com/example/ai_window/service/YandexGptService.kt`
+
+**ViewModel архитектура**:
+- `ChatViewModel`, `PlanningViewModel`, `ReasoningViewModel` в `composeApp/src/commonMain/kotlin`
+- Управление состоянием через Compose State
+- Lifecycle-aware компоненты через androidx.lifecycle
 
 ## Команды разработки
 
-### Сборка и запуск
+### Запуск приложения
 ```bash
-# Android APK
-./gradlew :composeApp:assembleDebug
-
-# Desktop приложение
+# Desktop (рекомендуется для быстрой разработки)
 ./gradlew :composeApp:run
 
-# Web версия (WASM - рекомендуется для разработки)
+# Web WASM (современные браузеры, быстрее чем JS)
 ./gradlew :composeApp:wasmJsBrowserDevelopmentRun
 
-# Web версия (JS - для старых браузеров)
+# Web JS (поддержка старых браузеров)
 ./gradlew :composeApp:jsBrowserDevelopmentRun
 
-# Сервер
-./gradlew :server:run
+# Android APK (debug сборка)
+./gradlew :composeApp:assembleDebug
 
-# iOS - требует Xcode
+# iOS (требует Xcode на macOS)
 open iosApp/iosApp.xcodeproj
+
+# Ktor сервер (необходим для работы приложений с API)
+./gradlew :server:run
 ```
 
 ### Тестирование
 ```bash
-# Запуск всех тестов
+# Все тесты всех модулей
 ./gradlew test
 
 # Тесты конкретного модуля
 ./gradlew :shared:test
+./gradlew :composeApp:test
 ./gradlew :server:test
+
+# Тесты с подробным выводом
+./gradlew test --info
 ```
 
-### Полезные команды для разработки
+### Сборка и очистка
 ```bash
-# Очистка проекта
+# Полная очистка (удаляет build/, .gradle кеш)
 ./gradlew clean
 
-# Обновление зависимостей
+# Пересборка зависимостей
 ./gradlew --refresh-dependencies
 
-# Проверка доступных задач для модуля
+# Список доступных задач
+./gradlew tasks
 ./gradlew :composeApp:tasks
-./gradlew :shared:tasks
-./gradlew :server:tasks
 ```
 
 ## Конфигурация и версии
 
-Все версии зависимостей управляются через `gradle/libs.versions.toml`:
-- Kotlin: 2.2.20
-- Compose Multiplatform: 1.9.1
-- Ktor: 3.3.1
-- Android Target SDK: 36
-- Android Min SDK: 24
+Зависимости управляются через `gradle/libs.versions.toml`:
+- **Kotlin**: 2.2.20
+- **Compose Multiplatform**: 1.9.1
+- **Ktor**: 3.3.1
+- **Android SDK**: min 24 (Android 7.0), target 36
+- **JVM Target**: 11
 
 ## Особенности разработки
 
-### Compose Multiplatform
-- Общий UI код находится в `composeApp/src/commonMain`
-- Платформо-специфичные UI компоненты в соответствующих sourceSet
-- Material Design 3 используется по умолчанию
+### Работа с Yandex GPT API
+
+**Архитектура запросов**:
+1. UI (ChatViewModel/PlanningViewModel/ReasoningViewModel) → YandexGptService
+2. YandexGptService → Ktor Server (localhost:8080)
+3. Ktor Server → Yandex API (с авторизацией)
+
+**Парсинг ответов** (`shared/src/commonMain/kotlin/com/example/ai_window/model/ResponseSchema.kt`):
+- `ParseResult.Success` - валидный JSON ответ
+- `ParseResult.Partial` - частично валидный (с fallback значениями)
+- `ParseResult.Error` - невалидный ответ с сырым текстом
+
+### Compose Multiplatform UI
+
+**Структура кода**:
+- Общий UI: `composeApp/src/commonMain/kotlin`
+- Платформо-специфичный: `composeApp/src/{androidMain,iosMain,jvmMain,jsMain,wasmJsMain}`
+- Material Design 3 по умолчанию
+
+**Screens и ViewModels**:
+- `App.kt` - главный Composable с навигацией
+- `ChatViewModel` - базовый чат
+- `PlanningViewModel` - планирование задач с prompt engineering
+- `ReasoningViewModel` - рассуждения с цепочкой мыслей
 
 ### Ktor Server
-- Запускается на порту 8080 (константа в `shared/src/commonMain/kotlin/com/example/ai_window/Constants.kt`)
-- Конфигурация логирования в `server/src/main/resources/logback.xml`
-- Роутинг определен в `Application.kt`
 
-### Android особенности
-- Edge-to-edge UI включен в MainActivity
-- Минимальная версия Android 7.0 (API 24)
-- Использует AndroidX и Jetpack Compose
+**Конфигурация**:
+- Порт: 8080 (`shared/src/commonMain/kotlin/com/example/ai_window/Constants.kt`)
+- CORS: разрешены все источники (для разработки)
+- Логирование: `server/src/main/resources/logback.xml`
+
+**API эндпоинты** (`server/src/main/kotlin/com/example/ai_window/Application.kt`):
+- `GET /` - health check
+- `POST /api/yandex-gpt` - прокси к Yandex API (headers: `X-API-Key`, `X-Folder-Id`)
+
+### Добавление новых платформ
+
+**При добавлении expect/actual реализаций**:
+1. Объявите `expect` функцию/класс в `shared/src/commonMain`
+2. Создайте `actual` реализацию в каждом sourceSet (`androidMain`, `iosMain`, `jvmMain`, `jsMain`, `wasmJsMain`)
+3. Используйте платформо-специфичные API только в `actual` блоках
+
+**Пример**: `Platform.kt` имеет 5 реализаций для каждой платформы
+
+### Константы и конфигурация
+
+- Все общие константы: `shared/src/commonMain/kotlin/com/example/ai_window/Constants.kt`
+- BuildConfig (версии, debug флаги): `composeApp/src/commonMain/kotlin/com/example/ai_window/BuildConfig.kt`
 
 ### Desktop дистрибутивы
-Проект настроен для создания нативных пакетов:
+
+```bash
+./gradlew :composeApp:createDistributable  # Создать пакет для текущей ОС
+```
+
+Поддерживаемые форматы (настройка в `composeApp/build.gradle.kts`):
 - macOS: DMG
 - Windows: MSI
 - Linux: Deb
-
-## Важные замечания
-
-- При добавлении новых платформо-специфичных реализаций используйте expect/actual механизм
-- Все общие константы должны быть в `shared/src/commonMain/kotlin/com/example/ai_window/Constants.kt`
-- UI компоненты должны быть в `composeApp` модуле, бизнес-логика в `shared`
-- При работе с iOS требуется macOS с установленным Xcode

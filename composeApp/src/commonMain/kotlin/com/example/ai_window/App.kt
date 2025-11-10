@@ -48,6 +48,13 @@ fun App() {
             )
         }
 
+        val temperatureViewModel: TemperatureViewModel = viewModel {
+            TemperatureViewModel(
+                apiKey = BuildConfig.YANDEX_API_KEY,
+                folderId = BuildConfig.YANDEX_FOLDER_ID
+            )
+        }
+
         Column(modifier = Modifier.fillMaxSize()) {
             // Navigation tabs
             NavigationBar(
@@ -60,6 +67,7 @@ fun App() {
                 Screen.Chat -> ChatScreen(chatViewModel)
                 Screen.Planning -> PlanningScreen(planningViewModel)
                 Screen.Reasoning -> ReasoningScreen(reasoningViewModel)
+                Screen.Temperature -> TemperatureScreen(temperatureViewModel)
             }
         }
     }
@@ -69,7 +77,8 @@ fun App() {
 enum class Screen(val displayName: String, val icon: String) {
     Chat("Чат", "💬"),
     Planning("ТЗ", "📋"),
-    Reasoning("Рассуждение", "🧠")
+    Reasoning("Рассуждение", "🧠"),
+    Temperature("Температура", "🌡️")
 }
 
 @Composable
