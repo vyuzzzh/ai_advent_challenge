@@ -41,6 +41,13 @@ fun App() {
             )
         }
 
+        val reasoningViewModel: ReasoningViewModel = viewModel {
+            ReasoningViewModel(
+                apiKey = BuildConfig.YANDEX_API_KEY,
+                folderId = BuildConfig.YANDEX_FOLDER_ID
+            )
+        }
+
         Column(modifier = Modifier.fillMaxSize()) {
             // Navigation tabs
             NavigationBar(
@@ -52,6 +59,7 @@ fun App() {
             when (currentScreen) {
                 Screen.Chat -> ChatScreen(chatViewModel)
                 Screen.Planning -> PlanningScreen(planningViewModel)
+                Screen.Reasoning -> ReasoningScreen(reasoningViewModel)
             }
         }
     }
@@ -60,7 +68,8 @@ fun App() {
 // Screen enum
 enum class Screen(val displayName: String, val icon: String) {
     Chat("Чат", "💬"),
-    Planning("ТЗ", "📋")
+    Planning("ТЗ", "📋"),
+    Reasoning("Рассуждение", "🧠")
 }
 
 @Composable
