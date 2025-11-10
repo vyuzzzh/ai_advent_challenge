@@ -94,7 +94,14 @@ data class ResponseContent(
 @Serializable
 data class ResponseMetadata(
     val confidence: Double = 0.5,
-    val category: String = "general"
+    val category: String = "general",
+    // Day 3: Requirements gathering progress tracking
+    val sections_completed: List<String>? = null,  // ["project_overview", "features", ...]
+    val questions_asked: Int? = null,              // Number of questions asked so far
+    val is_complete: Boolean? = null,              // true when final specification is ready
+    // Day 4: Reasoning metrics
+    val wordCount: Int? = null,                    // Number of words in response
+    val hasSteps: Boolean? = null                  // Whether response has step-by-step structure
 ) {
     val categoryEnum: ResponseCategory
         get() = ResponseCategory.fromString(category)
@@ -109,6 +116,11 @@ enum class ResponseCategory(val displayName: String) {
     GENERAL("General"),
     PLAINTEXT_FALLBACK("Plain Text"),
     MANUAL_EXTRACTION("Manual Extract"),
+    // Day 3: Requirements gathering categories
+    REQUIREMENTS_GATHERING("Сбор требований"),
+    REQUIREMENTS_COMPLETE("ТЗ готово"),
+    // Day 4: Reasoning categories
+    REASONING("Рассуждение"),
     UNKNOWN("Unknown");
 
     companion object {

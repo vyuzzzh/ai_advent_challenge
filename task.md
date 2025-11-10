@@ -1386,3 +1386,65 @@ Follow this order for systematic implementation:
 - Yandex Cloud Structured Output: https://yandex.cloud/ru/docs/ai-studio/concepts/generation/structured-output
 - JSON Schema specification: https://json-schema.org/
 - Kotlin serialization: https://github.com/Kotlin/kotlinx.serialization
+
+### day_3
+
+# AI Requirements Gathering Assistant - Technical Specification
+
+## Overview
+An AI-powered assistant built on YandexGPT that conducts natural conversations to collect project requirements and automatically generates a structured technical specification document.
+
+## Core Functionality
+
+### Information Collection (6 Required Sections)
+1. **Project Overview** - name, description, objectives
+2. **Target Audience** - users, scale
+3. **Features** - core functions with priorities (must/should/nice to have)
+4. **Technical Requirements** - platforms, tech stack, integrations
+5. **Non-Functional Requirements** - performance, security, availability
+6. **Timeline & Budget** - deadlines, constraints
+
+### Auto-Completion Logic
+The assistant must **autonomously** stop and generate the final specification when:
+- All 6 sections have sufficient information collected
+- Maximum 10-15 questions asked
+- User explicitly requests finalization
+
+## Expected Behavior
+
+**Conversation Flow:**
+1. Natural dialogue (not questionnaire-style)
+2. Clarifying questions when needed
+3. Suggest reasonable defaults for unknown details
+4. **Self-triggered completion** - no permission asking
+
+**Completion Signal:**
+```
+📋 REQUIREMENTS GATHERING COMPLETED. GENERATING SPECIFICATION...
+```
+Followed by structured technical specification document.
+
+## YandexGPT Configuration
+
+```json
+{
+  "modelUri": "gpt://{folder_id}/yandexgpt-lite/latest",
+  "completionOptions": {
+    "temperature": 0.7,
+    "maxTokens": 8000
+  }
+}
+```
+
+## Key Constraints
+- ≤15 questions total
+- Autonomous decision-making (no "is this enough?" questions)
+- Complete all 6 sections before generating spec
+- Natural conversational tone throughout
+
+## Success Criteria
+✅ Gathers all 6 required sections  
+✅ Natural dialogue flow  
+✅ Self-determines completion point  
+✅ Outputs structured, comprehensive specification  
+✅ Stays within question limit
