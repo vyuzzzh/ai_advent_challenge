@@ -83,5 +83,101 @@ fun Application.module() {
                 call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Unknown error")))
             }
         }
+
+        // Прокси-эндпоинт для HuggingFace Inference Providers API (Chat Completion)
+        post("/api/huggingface") {
+            try {
+                val hfToken = call.request.header("X-HF-Token")
+                    ?: return@post call.respond(HttpStatusCode.BadRequest, "Missing HuggingFace token")
+
+                val request = call.receive<com.example.ai_window.model.HuggingFaceRequest>()
+
+                println("📤 HuggingFace Request:")
+                println("  Model: ${request.model}")
+                println("  Messages: ${request.messages.size}")
+                println("  Max tokens: ${request.maxTokens}")
+
+                val startTime = System.currentTimeMillis()
+
+                // Запрос к HuggingFace Inference Providers API (Chat Completion)
+                val hfResponse = try {
+                    httpClient.post("https://router.huggingface.co/v1/chat/completions") {
+                        header("Authorization", "Bearer $hfToken")
+                        contentType(ContentType.Application.Json)
+                        setBody(request)
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    return@post call.respond(
+                        HttpStatusCode.InternalServerError,
+                        com.example.ai_window.model.HuggingFaceResponse(
+                            error = "Failed to connect to HuggingFace API: ${e.message}"
+                        )
+                    )
+                }
+
+                val endTime = System.currentTimeMillis()
+                val executionTime = endTime - startTime
+
+                // Парсим ответ
+                when (hfResponse.status) {
+                    HttpStatusCode.OK -> {
+                        // Chat Completion API возвращает OpenAI-совместимый формат
+                        val responseText = hfResponse.body<String>()
+                        println("📥 HF Response: $responseText")
+
+                        try {
+                            val json = Json { ignoreUnknownKeys = true }
+                            val apiResponse = json.decodeFromString<com.example.ai_window.model.HuggingFaceResponse>(responseText)
+
+                            // Добавляем время выполнения
+                            val enrichedResponse = apiResponse.copy(executionTime = executionTime)
+
+                            call.respond(enrichedResponse)
+                        } catch (e: Exception) {
+                            println("Failed to parse response: ${e.message}")
+                            e.printStackTrace()
+                            call.respond(
+                                HttpStatusCode.InternalServerError,
+                                com.example.ai_window.model.HuggingFaceResponse(
+                                    error = "Failed to parse HuggingFace response: ${e.message}"
+                                )
+                            )
+                        }
+                    }
+                    HttpStatusCode.ServiceUnavailable -> {
+                        // Модель загружается или недоступна
+                        val errorBody = hfResponse.body<String>()
+                        println("Service unavailable: $errorBody")
+
+                        call.respond(
+                            com.example.ai_window.model.HuggingFaceResponse(
+                                error = "Модель временно недоступна. Попробуйте другую модель или повторите позже.",
+                                executionTime = executionTime
+                            )
+                        )
+                    }
+                    else -> {
+                        val errorBody = hfResponse.body<String>()
+                        println("❌ HF API error (${hfResponse.status}): $errorBody")
+
+                        call.respond(
+                            HttpStatusCode.InternalServerError,
+                            com.example.ai_window.model.HuggingFaceResponse(
+                                error = "HuggingFace API error (${hfResponse.status}): $errorBody"
+                            )
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                call.respond(
+                    HttpStatusCode.InternalServerError,
+                    com.example.ai_window.model.HuggingFaceResponse(
+                        error = "Server error: ${e.message}"
+                    )
+                )
+            }
+        }
     }
 }

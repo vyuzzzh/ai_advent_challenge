@@ -270,7 +270,7 @@ class TemperatureExperimentService(
                     "Генерация кода по четкому ТЗ"
                 ),
                 summary = "Детерминированный режим. Максимальная точность и воспроизводимость. " +
-                        "Self-BLEU: ${"%.2f".format(metrics.selfBleu)} - " +
+                        "Self-BLEU: ${(metrics.selfBleu * 100).toInt() / 100.0} - " +
                         "${if (metrics.selfBleu > 0.8) "очень высокая повторяемость" else "высокая стабильность"}."
             )
 
@@ -292,8 +292,8 @@ class TemperatureExperimentService(
                     "Ответы на пользовательские запросы"
                 ),
                 summary = "Сбалансированный режим. Компромисс между точностью и креативностью. " +
-                        "Self-BLEU: ${"%.2f".format(metrics.selfBleu)}, " +
-                        "Вариативность: ${"%.2f".format(metrics.responseVariability.structuralDiversity)}."
+                        "Self-BLEU: ${(metrics.selfBleu * 100).toInt() / 100.0}, " +
+                        "Вариативность: ${(metrics.responseVariability.structuralDiversity * 100).toInt() / 100.0}."
             )
 
             else -> TemperatureRecommendation(
@@ -315,7 +315,7 @@ class TemperatureExperimentService(
                     "Создание вариантов контента"
                 ),
                 summary = "Высококреативный режим. Максимальное разнообразие ответов. " +
-                        "Self-BLEU: ${"%.2f".format(metrics.selfBleu)} - " +
+                        "Self-BLEU: ${(metrics.selfBleu * 100).toInt() / 100.0} - " +
                         "${if (metrics.selfBleu < 0.3) "очень высокое разнообразие" else "хорошее разнообразие"}."
             )
         }

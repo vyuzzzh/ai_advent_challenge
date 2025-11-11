@@ -406,12 +406,12 @@ fun MetricsGrid(metrics: TemperatureMetrics) {
         ) {
             MetricChip(
                 label = "Self-BLEU",
-                value = "%.2f".format(metrics.selfBleu),
+                value = metrics.selfBleu.formatDecimals(2),
                 modifier = Modifier.weight(1f)
             )
             MetricChip(
                 label = "Семант. согласованность",
-                value = "%.2f".format(metrics.semanticConsistency),
+                value = metrics.semanticConsistency.formatDecimals(2),
                 modifier = Modifier.weight(1f)
             )
         }
@@ -422,19 +422,19 @@ fun MetricsGrid(metrics: TemperatureMetrics) {
         ) {
             MetricChip(
                 label = "Слов (сред.)",
-                value = "%.0f".format(metrics.avgWordCount),
+                value = metrics.avgWordCount.formatDecimals(0),
                 modifier = Modifier.weight(1f)
             )
             MetricChip(
                 label = "Уник. слов",
-                value = "%.0f".format(metrics.avgUniqueWords),
+                value = metrics.avgUniqueWords.formatDecimals(0),
                 modifier = Modifier.weight(1f)
             )
         }
 
         MetricChip(
             label = "Структ. разнообразие",
-            value = "%.2f".format(metrics.responseVariability.structuralDiversity),
+            value = metrics.responseVariability.structuralDiversity.formatDecimals(2),
             modifier = Modifier.fillMaxWidth()
         )
     }
@@ -598,7 +598,7 @@ fun ComparisonRow(
         )
         results.forEach { result ->
             Text(
-                "%.2f".format(getValue(result)),
+                getValue(result).formatDecimals(2),
                 modifier = Modifier.weight(0.7f),
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium

@@ -1,14 +1,19 @@
 package com.example.ai_window
 
-import kotlin.js.Date
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 actual fun getCurrentTimestamp(): String {
-    val date = Date()
-    val year = date.getFullYear()
-    val month = (date.getMonth() + 1).toString().padStart(2, '0')
-    val day = date.getDate().toString().padStart(2, '0')
-    val hours = date.getHours().toString().padStart(2, '0')
-    val minutes = date.getMinutes().toString().padStart(2, '0')
-    val seconds = date.getSeconds().toString().padStart(2, '0')
+    val now = Clock.System.now()
+    val localDateTime = now.toLocalDateTime(TimeZone.currentSystemDefault())
+
+    val year = localDateTime.year
+    val month = localDateTime.monthNumber.toString().padStart(2, '0')
+    val day = localDateTime.dayOfMonth.toString().padStart(2, '0')
+    val hours = localDateTime.hour.toString().padStart(2, '0')
+    val minutes = localDateTime.minute.toString().padStart(2, '0')
+    val seconds = localDateTime.second.toString().padStart(2, '0')
+
     return "$year-$month-$day $hours:$minutes:$seconds"
 }

@@ -121,6 +121,8 @@ open iosApp/iosApp.xcodeproj
 - `ChatViewModel` - базовый чат
 - `PlanningViewModel` - планирование задач с prompt engineering
 - `ReasoningViewModel` - рассуждения с цепочкой мыслей
+- `TemperatureViewModel` - эксперименты с параметром temperature (параллельные/последовательные запросы с разными значениями 0.1, 0.6, 0.9)
+- `ModelComparisonViewModel` - сравнение моделей HuggingFace (day_6: Llama 3.2, FLAN-T5 с метриками производительности и качества)
 
 ### Ktor Server
 
@@ -132,6 +134,7 @@ open iosApp/iosApp.xcodeproj
 **API эндпоинты** (`server/src/main/kotlin/com/example/ai_window/Application.kt`):
 - `GET /` - health check
 - `POST /api/yandex-gpt` - прокси к Yandex API (headers: `X-API-Key`, `X-Folder-Id`)
+- `POST /api/huggingface` - прокси к HuggingFace Inference API (headers: `X-HF-Token`, `X-Model-Id`)
 
 ### Добавление новых платформ
 

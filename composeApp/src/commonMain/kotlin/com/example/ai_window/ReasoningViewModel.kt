@@ -226,7 +226,7 @@ sealed class ReasoningResult {
 data class ExpertMessage(
     val role: ExpertRole,
     val content: String,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = getCurrentTimeMillis()
 )
 
 /**

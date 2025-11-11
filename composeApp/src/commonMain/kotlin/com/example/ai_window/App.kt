@@ -55,6 +55,12 @@ fun App() {
             )
         }
 
+        val modelComparisonViewModel: ModelComparisonViewModel = viewModel {
+            ModelComparisonViewModel(
+                hfToken = BuildConfig.HUGGINGFACE_API_TOKEN
+            )
+        }
+
         Column(modifier = Modifier.fillMaxSize()) {
             // Navigation tabs
             NavigationBar(
@@ -68,6 +74,7 @@ fun App() {
                 Screen.Planning -> PlanningScreen(planningViewModel)
                 Screen.Reasoning -> ReasoningScreen(reasoningViewModel)
                 Screen.Temperature -> TemperatureScreen(temperatureViewModel)
+                Screen.ModelComparison -> ModelComparisonScreen(modelComparisonViewModel)
             }
         }
     }
@@ -78,7 +85,8 @@ enum class Screen(val displayName: String, val icon: String) {
     Chat("Чат", "💬"),
     Planning("ТЗ", "📋"),
     Reasoning("Рассуждение", "🧠"),
-    Temperature("Температура", "🌡️")
+    Temperature("Температура", "🌡️"),
+    ModelComparison("Модели HF", "🤖")
 }
 
 @Composable
