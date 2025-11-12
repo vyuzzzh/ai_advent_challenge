@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.ai_window.model.AIResponse
 import com.example.ai_window.model.ParseResult
 import com.example.ai_window.service.ReasoningComparisonService
+import com.example.ai_window.util.getCurrentTimeMillis
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -226,7 +227,7 @@ sealed class ReasoningResult {
 data class ExpertMessage(
     val role: ExpertRole,
     val content: String,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = getCurrentTimeMillis()
 )
 
 /**
