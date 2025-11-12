@@ -77,6 +77,23 @@ class HuggingFaceService(
             println("  Usage: ${response.usage}")
             println("  Error: ${response.error}")
 
+            // Проверка подмены модели (с нормализацией)
+            val actualModel = response.model
+            if (actualModel != null) {
+                val normalizedRequested = normalizeModelName(modelId)
+                val normalizedActual = normalizeModelName(actualModel)
+
+                if (normalizedActual != normalizedRequested) {
+                    println("⚠️  WARNING: Model substitution detected!")
+                    println("  Requested: $modelId (normalized: $normalizedRequested)")
+                    println("  Actually used: $actualModel (normalized: $normalizedActual)")
+                } else if (actualModel != modelId) {
+                    println("ℹ️  Model name normalized by provider:")
+                    println("  Requested: $modelId")
+                    println("  Returned: $actualModel")
+                }
+            }
+
             if (response.error != null) {
                 return Result.failure(Exception("HuggingFace API error: ${response.error}"))
             }
@@ -98,7 +115,8 @@ class HuggingFaceService(
                 modelName = modelId.split("/").firstOrNull()?.split(":")?.firstOrNull() ?: modelId,
                 generatedText = generatedText,
                 executionTime = executionTime,
-                tokenUsage = tokenUsage
+                tokenUsage = tokenUsage,
+                actualModelUsed = actualModel  // Сохраняем реально использованную модель
             )
 
             Result.success(detailedResponse)
@@ -144,6 +162,19 @@ class HuggingFaceService(
         }
 
         return Result.success(responses)
+    }
+
+    /**
+     * Нормализация имени модели для корректного сравнения
+     * - Убирает суффиксы провайдеров (:fastest, :novita и т.д.)
+     * - Приводит к нижнему регистру
+     */
+    private fun normalizeModelName(modelName: String): String {
+        return modelName
+            .split(":")  // Убираем суффикс провайдера
+            .first()
+            .lowercase()  // Приводим к нижнему регистру
+            .trim()
     }
 
     fun close() {
