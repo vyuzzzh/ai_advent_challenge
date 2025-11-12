@@ -2,6 +2,7 @@ package com.example.ai_window.service
 
 import com.example.ai_window.SERVER_PORT
 import com.example.ai_window.model.*
+import com.example.ai_window.util.getCurrentTimeMillis
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -10,11 +11,6 @@ import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
 import kotlin.Result
-
-/**
- * Получить текущее время в миллисекундах (expect/actual)
- */
-expect fun getCurrentTimeMillis(): Long
 
 /**
  * Сервис для взаимодействия с HuggingFace Inference API через прокси-сервер

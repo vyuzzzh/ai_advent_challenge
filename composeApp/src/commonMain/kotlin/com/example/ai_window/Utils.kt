@@ -1,11 +1,6 @@
 package com.example.ai_window
 
 /**
- * Получить текущее время в миллисекундах (expect/actual)
- */
-expect fun getCurrentTimeMillis(): Long
-
-/**
  * Форматирование Double с указанным количеством десятичных знаков
  * Простая реализация без использования String.format()
  */

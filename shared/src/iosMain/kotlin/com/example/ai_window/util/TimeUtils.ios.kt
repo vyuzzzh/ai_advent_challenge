@@ -1,4 +1,4 @@
-package com.example.ai_window.service
+package com.example.ai_window.util
 
 import platform.Foundation.NSDate
 import platform.Foundation.timeIntervalSince1970

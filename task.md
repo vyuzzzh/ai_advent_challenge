@@ -1562,3 +1562,84 @@ Experiment with different temperature values (0.0, 0.7, 1.0) for Yandex GPT API 
 ✅ UI с визуальным сравнением результатов
 ✅ Два режима выполнения (параллельный/последовательный)
 ✅ Проект успешно собирается
+
+---
+
+## Code Refactoring: getCurrentTimeMillis Duplication Elimination
+
+### Problem Identified
+Обнаружено полное дублирование функции `getCurrentTimeMillis()` в двух независимых иерархиях expect/actual:
+- **11 файлов** с идентичным кодом
+- **2 независимые иерархии**: composeApp и shared модули
+- **60+ строк** дублированного кода
+
+**Структура дублирования:**
+1. **composeApp модуль** (6 файлов):
+   - `composeApp/src/commonMain/.../Utils.kt` - expect объявление
+   - 5 платформо-специфичных actual реализаций (android, ios, jvm, js, wasmJs)
+
+2. **shared модуль** (5 файлов):
+   - `shared/.../service/HuggingFaceService.kt` - inline expect объявление
+   - 5 платформо-специфичных actual реализаций (android, ios, jvm, js, wasmJs)
+
+### Solution Implemented
+Консолидирован код в единую иерархию в shared модуле с отдельным util package.
+
+**Новая структура:**
+```
+shared/src/
+├── commonMain/kotlin/com/example/ai_window/util/TimeUtils.kt (expect)
+├── androidMain/kotlin/com/example/ai_window/util/TimeUtils.android.kt
+├── iosMain/kotlin/com/example/ai_window/util/TimeUtils.ios.kt
+├── jvmMain/kotlin/com/example/ai_window/util/TimeUtils.jvm.kt
+├── jsMain/kotlin/com/example/ai_window/util/TimeUtils.js.kt
+└── wasmJsMain/kotlin/com/example/ai_window/util/TimeUtils.wasmJs.kt
+```
+
+### Changes Made
+
+1. **Создана централизованная иерархия** (`shared/util/`)
+   - ✅ Новое expect объявление в `shared/.../util/TimeUtils.kt`
+   - ✅ 5 actual реализаций для всех платформ
+
+2. **Удалены дубликаты**
+   - ✅ 5 файлов TimeUtils из `composeApp` модуля
+   - ✅ Expect объявление из `composeApp/.../Utils.kt`
+   - ✅ 5 файлов TimeUtils из `shared/.../service`
+   - ✅ Inline expect из `HuggingFaceService.kt`
+
+3. **Обновлены импорты**
+   - ✅ `HuggingFaceService.kt`: добавлен `import com.example.ai_window.util.getCurrentTimeMillis`
+   - ✅ `ReasoningViewModel.kt`: добавлен `import com.example.ai_window.util.getCurrentTimeMillis`
+
+4. **Компиляция и тестирование**
+   - ✅ Успешная компиляция `shared` модуля
+   - ✅ Успешная компиляция `composeApp` модуля
+   - ✅ Оба модуля собираются без ошибок
+
+### Results
+- **Было:** 11 файлов (2 expect + 10 actual в двух иерархиях)
+- **Стало:** 6 файлов (1 expect + 5 actual в одной иерархии)
+- **Удалено:** 60+ строк дублированного кода
+- **Сохранено:** Полная функциональность для всех платформ
+
+### Architecture Improvement
+- ✅ Единая точка определения времени
+- ✅ Централизованное управление в shared модуле
+- ✅ Правильная организация в util package
+- ✅ Упрощенное сопровождение кода
+- ✅ Отсутствие конфликтов импортов
+
+### Platform-Specific Implementations Preserved
+Все платформо-специфичные реализации сохранены без изменений:
+- **Android & JVM:** `System.currentTimeMillis()`
+- **iOS:** `NSDate().timeIntervalSince1970 * 1000`
+- **JS:** `kotlin.js.Date.now().toLong()`
+- **WasmJS:** `kotlinx.datetime.Clock.System.now().toEpochMilliseconds()`
+
+### Success Criteria
+✅ Устранено дублирование кода
+✅ Сохранена функциональность на всех платформах
+✅ Успешная компиляция обоих модулей
+✅ Обновлены все необходимые импорты
+✅ Улучшена архитектура проекта
