@@ -33,6 +33,11 @@ object HuggingFaceModels {
             modelId = "Qwen/Qwen2.5-VL-7B-Instruct:fastest",
             displayName = "Qwen 2.5 VL 7B",
             description = "Мультимодальная модель (Vision-Language) от Alibaba"
+        ),
+        HFModel(
+            modelId = "meta-llama/Llama-3.2-1B-Instruct:fastest",
+            displayName = "Llama 3.2 1B",
+            description = "Легковесная chat-модель от Meta (1B параметров, контекст: 128K) - для анализа токенов"
         )
     )
 }
@@ -115,10 +120,11 @@ data class TokenUsage(
  */
 @Serializable
 data class HFDetailedResponse(
-    val modelId: String,
+    val modelId: String,                  // Запрошенная модель
     val modelName: String,
     val generatedText: String,
-    val executionTime: Long,  // milliseconds
-    val tokenUsage: TokenUsage,  // Используем TokenUsage из API
-    val error: String? = null
+    val executionTime: Long,              // milliseconds
+    val tokenUsage: TokenUsage,           // Используем TokenUsage из API
+    val error: String? = null,
+    val actualModelUsed: String? = null   // Реально использованная модель (может отличаться!)
 )
