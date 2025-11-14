@@ -17,6 +17,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ai_window.model.ChatMessage
 import com.example.ai_window.model.ChatState
+import com.example.ai_window.screens.CompressionComparisonScreen
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 @Composable
@@ -61,6 +62,13 @@ fun App() {
             )
         }
 
+        val compressionComparisonViewModel: CompressionComparisonViewModel = viewModel {
+            CompressionComparisonViewModel(
+                apiKey = BuildConfig.YANDEX_API_KEY,
+                folderId = BuildConfig.YANDEX_FOLDER_ID
+            )
+        }
+
         Column(modifier = Modifier.fillMaxSize()) {
             // Navigation tabs
             NavigationBar(
@@ -75,6 +83,7 @@ fun App() {
                 Screen.Reasoning -> ReasoningScreen(reasoningViewModel)
                 Screen.Temperature -> TemperatureScreen(temperatureViewModel)
                 Screen.ModelComparison -> ModelComparisonScreen(modelComparisonViewModel)
+                Screen.Compression -> CompressionComparisonScreen(compressionComparisonViewModel)
             }
         }
     }
@@ -86,7 +95,8 @@ enum class Screen(val displayName: String, val icon: String) {
     Planning("ТЗ", "📋"),
     Reasoning("Рассуждение", "🧠"),
     Temperature("Температура", "🌡️"),
-    ModelComparison("Модели HF", "🤖")
+    ModelComparison("Модели HF", "🤖"),
+    Compression("Сжатие", "🗜️")
 }
 
 @Composable

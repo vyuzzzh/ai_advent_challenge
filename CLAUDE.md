@@ -109,6 +109,37 @@ open iosApp/iosApp.xcodeproj
 - `ParseResult.Partial` - частично валидный (с fallback значениями)
 - `ParseResult.Error` - невалидный ответ с сырым текстом
 
+### Сжатие истории диалогов (History Compression)
+
+**HistoryCompressionService** (`shared/src/commonMain/kotlin/com/example/ai_window/service/HistoryCompressionService.kt`):
+- Автоматическое сжатие длинных диалогов для экономии токенов
+- Стратегия: каждые N сообщений (по умолчанию `compressionThreshold = 10`), старые сообщения заменяются кратким резюме
+- Сохраняет последние `keepRecentCount` сообщений (по умолчанию 5) для контекста
+
+**Алгоритм сжатия**:
+1. Проверка: `shouldCompress()` - нужно ли сжатие (>= threshold сообщений)
+2. Разделение истории: старые сообщения → суммаризация, свежие → сохранение
+3. YandexGPT создает краткое резюме (3-5 предложений) с `temperature = 0.3`
+4. Замена: старые сообщения заменяются одним `ChatMessage` с `isSummary = true`
+
+**Поля ChatMessage для сжатия** (`shared/src/commonMain/kotlin/com/example/ai_window/model/ChatMessage.kt`):
+- `isSummary: Boolean` - флаг суммарного сообщения
+- `summarizedCount: Int?` - количество замененных сообщений
+- `originalIds: List<String>?` - ID оригинальных сообщений
+- `estimatedTokens: Int?` - оценка токенов (кеш)
+
+**TokenUtils** (`shared/src/commonMain/kotlin/com/example/ai_window/util/TokenUtils.kt`):
+- Эвристическая оценка токенов: ~1.3 токена на слово для русского текста
+- `estimateTokens(text)` - оценка для одного текста
+- `estimateTokensForHistory(messages)` - суммарная оценка для истории
+- Используется для метрик и принятия решений о сжатии
+
+**CompressionStats** (`shared/src/commonMain/kotlin/com/example/ai_window/model/CompressionStats.kt`):
+- Метрики сравнения чата с/без сжатия: количество сообщений, input/output токены, время ответов
+- `tokenSavingsPercent` - процент экономии токенов
+- `compressionOverhead` - время на суммаризацию
+- `getQualityAssessment()` - оценка эффективности (>50% - отлично, >30% - хорошо, и т.д.)
+
 ### Compose Multiplatform UI
 
 **Структура кода**:
@@ -117,12 +148,14 @@ open iosApp/iosApp.xcodeproj
 - Material Design 3 по умолчанию
 
 **Screens и ViewModels**:
-- `App.kt` - главный Composable с навигацией
+- `App.kt` - главный Composable с навигацией (tabs для всех режимов)
+- `screens/` - отдельная папка для UI экранов (CompressionComparisonScreen и др.)
 - `ChatViewModel` - базовый чат
 - `PlanningViewModel` - планирование задач с prompt engineering
 - `ReasoningViewModel` - рассуждения с цепочкой мыслей
 - `TemperatureViewModel` - эксперименты с параметром temperature (параллельные/последовательные запросы с разными значениями 0.1, 0.6, 0.9)
 - `ModelComparisonViewModel` - сравнение моделей HuggingFace (day_6: Llama 3.2, FLAN-T5 с метриками производительности и качества)
+- `CompressionComparisonViewModel` - сравнение чата с/без сжатия истории (day_8: параллельные запросы, метрики экономии токенов)
 
 ### Ktor Server
 
@@ -148,7 +181,11 @@ open iosApp/iosApp.xcodeproj
 ### Константы и конфигурация
 
 - Все общие константы: `shared/src/commonMain/kotlin/com/example/ai_window/Constants.kt`
-- BuildConfig (версии, debug флаги): `composeApp/src/commonMain/kotlin/com/example/ai_window/BuildConfig.kt`
+- **BuildConfig** (`composeApp/src/commonMain/kotlin/com/example/ai_window/BuildConfig.kt`):
+  - `YANDEX_API_KEY` - ключ API для Yandex GPT
+  - `YANDEX_FOLDER_ID` - ID каталога Yandex Cloud
+  - `HUGGINGFACE_API_TOKEN` - токен для HuggingFace Inference API
+  - Передаются в ViewModels при инициализации в `App.kt`
 
 ### Desktop дистрибутивы
 
@@ -160,3 +197,16 @@ open iosApp/iosApp.xcodeproj
 - macOS: DMG
 - Windows: MSI
 - Linux: Deb
+
+## Паттерн инкрементальной разработки (day_X)
+
+Проект развивается по паттерну day-by-day экспериментов:
+- **day_6**: Token analysis, ModelComparisonViewModel (Llama 3.2, FLAN-T5)
+- **day_7**: Token analysis (согласно git истории)
+- **day_8**: History compression - CompressionComparisonViewModel, HistoryCompressionService, TokenUtils, CompressionStats
+
+**Принципы**:
+- Каждый "день" = отдельная функциональность/эксперимент
+- Комментарии в коде помечены day_X для отслеживания
+- Новые поля в моделях помечаются как `// Day X: описание`
+- Бранчи именуются `day_X` для изоляции экспериментов
