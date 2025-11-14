@@ -101,7 +101,9 @@ data class ResponseMetadata(
     val is_complete: Boolean? = null,              // true when final specification is ready
     // Day 4: Reasoning metrics
     val wordCount: Int? = null,                    // Number of words in response
-    val hasSteps: Boolean? = null                  // Whether response has step-by-step structure
+    val hasSteps: Boolean? = null,                 // Whether response has step-by-step structure
+    // Day 8: Token usage tracking
+    val tokenUsage: Usage? = null                  // Token usage from API response
 ) {
     val categoryEnum: ResponseCategory
         get() = ResponseCategory.fromString(category)
