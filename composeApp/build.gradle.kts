@@ -33,12 +33,13 @@ kotlin {
         browser()
         binaries.executable()
     }
-    
-    @OptIn(ExperimentalWasmDsl::class)
-    wasmJs {
-        browser()
-        binaries.executable()
-    }
+
+    // Day 9: wasmJs временно отключен из-за несовместимости с SQLDelight
+    // @OptIn(ExperimentalWasmDsl::class)
+    // wasmJs {
+    //     browser()
+    //     binaries.executable()
+    // }
     
     sourceSets {
         androidMain.dependencies {

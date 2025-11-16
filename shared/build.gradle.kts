@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.sqldelight)
 }
 
 kotlin {
@@ -22,11 +23,13 @@ kotlin {
     js {
         browser()
     }
-    
-    @OptIn(ExperimentalWasmDsl::class)
-    wasmJs {
-        browser()
-    }
+
+    // Day 9: wasmJs временно отключен из-за несовместимости с SQLDelight
+    // Раскомментируйте после решения проблемы с persistence для Web
+    // @OptIn(ExperimentalWasmDsl::class)
+    // wasmJs {
+    //     browser()
+    // }
     
     sourceSets {
         commonMain.dependencies {
@@ -41,9 +44,27 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.ktor.clientCio)
+            // Day 9: SQLDelight для Android
+            implementation(libs.sqldelight.runtime)
+            implementation(libs.sqldelight.coroutinesExtensions)
+            implementation(libs.sqldelight.androidDriver)
+        }
+        iosMain.dependencies {
+            // Day 9: SQLDelight для iOS
+            implementation(libs.sqldelight.runtime)
+            implementation(libs.sqldelight.coroutinesExtensions)
+            implementation(libs.sqldelight.nativeDriver)
         }
         jvmMain.dependencies {
             implementation(libs.ktor.clientCio)
+            // Day 9: SQLDelight для Desktop
+            implementation(libs.sqldelight.runtime)
+            implementation(libs.sqldelight.coroutinesExtensions)
+            implementation(libs.sqldelight.jvmDriver)
+        }
+        jsMain.dependencies {
+            // Day 9: SQLDelight не поддерживается для JS
+            // База данных будет отключена для этой платформы
         }
     }
 }
@@ -57,5 +78,15 @@ android {
     }
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()
+    }
+}
+
+// Day 9: SQLDelight configuration
+sqldelight {
+    databases {
+        create("ChatDatabase") {
+            packageName.set("com.example.ai_window.database")
+            // generateAsync.set(false) - используем синхронные методы для простоты
+        }
     }
 }

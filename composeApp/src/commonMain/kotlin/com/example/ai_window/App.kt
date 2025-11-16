@@ -23,6 +23,17 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 @Composable
 @Preview
 fun App() {
+    // Day 9: Инициализация БД один раз при первом запуске
+    remember {
+        try {
+            com.example.ai_window.util.initDatabase()
+        } catch (e: Exception) {
+            // Логируем ошибку, но не падаем - БД опциональна
+            println("Failed to initialize database: ${e.message}")
+        }
+        true
+    }
+
     MaterialTheme {
         // State for navigation between modes
         var currentScreen by remember { mutableStateOf<Screen>(Screen.Chat) }
