@@ -1,0 +1,80 @@
+-- Day 9: Таблица для хранения сообщений чата
+CREATE TABLE IF NOT EXISTS ChatMessage (
+    id TEXT PRIMARY KEY NOT NULL,
+    text TEXT NOT NULL,
+    isUser INTEGER NOT NULL,
+    timestamp INTEGER NOT NULL,
+    title TEXT,
+    metadata_json TEXT,
+    parseWarning TEXT,
+    isSummary INTEGER NOT NULL DEFAULT 0,
+    summarizedCount INTEGER,
+    originalIds_json TEXT,
+    estimatedTokens INTEGER
+);
+
+-- Индекс для быстрой сортировки по времени
+CREATE INDEX IF NOT EXISTS idx_timestamp ON ChatMessage(timestamp);
+
+-- Индекс для поиска summaries
+CREATE INDEX IF NOT EXISTS idx_isSummary ON ChatMessage(isSummary);
+
+-- Запросы
+
+-- Получить все сообщения, отсортированные по времени
+selectAll:
+SELECT *
+FROM ChatMessage
+ORDER BY timestamp ASC;
+
+-- Получить последние N сообщений
+selectRecent:
+SELECT *
+FROM ChatMessage
+ORDER BY timestamp DESC
+LIMIT ?;
+
+-- Получить сообщения с лимитом и смещением (для пагинации)
+selectWithPagination:
+SELECT *
+FROM ChatMessage
+ORDER BY timestamp ASC
+LIMIT ? OFFSET ?;
+
+-- Получить количество сообщений
+count:
+SELECT COUNT(*)
+FROM ChatMessage;
+
+-- Вставить сообщение
+insert:
+INSERT OR REPLACE INTO ChatMessage(
+    id,
+    text,
+    isUser,
+    timestamp,
+    title,
+    metadata_json,
+    parseWarning,
+    isSummary,
+    summarizedCount,
+    originalIds_json,
+    estimatedTokens
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- Удалить сообщение по ID
+deleteById:
+DELETE FROM ChatMessage WHERE id = ?;
+
+-- Удалить все сообщения
+deleteAll:
+DELETE FROM ChatMessage;
+
+-- Удалить старые сообщения (оставить только последние N)
+deleteOldMessages:
+DELETE FROM ChatMessage
+WHERE id NOT IN (
+    SELECT id FROM ChatMessage
+    ORDER BY timestamp DESC
+    LIMIT ?
+);

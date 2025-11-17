@@ -92,6 +92,9 @@ open iosApp/iosApp.xcodeproj
 - **Kotlin**: 2.2.20
 - **Compose Multiplatform**: 1.9.1
 - **Ktor**: 3.3.1
+- **Kotlinx Coroutines**: 1.10.2
+- **Kotlinx Serialization**: 1.8.0
+- **Kotlinx DateTime**: 0.6.1
 - **Android SDK**: min 24 (Android 7.0), target 36
 - **JVM Target**: 11
 
@@ -109,7 +112,18 @@ open iosApp/iosApp.xcodeproj
 - `ParseResult.Partial` - частично валидный (с fallback значениями)
 - `ParseResult.Error` - невалидный ответ с сырым текстом
 
-### Сжатие истории диалогов (History Compression)
+### Ключевые сервисы
+
+**YandexGptService** (`shared/src/commonMain/kotlin/com/example/ai_window/service/YandexGptService.kt`):
+- Взаимодействие с Yandex GPT API через прокси-сервер
+- Два режима: с native JSON Schema (`useNativeJsonSchema = true`) и с промпт-инструкциями
+- Модель: `yandexgpt-lite/latest`
+- Поддержка структурированных ответов с полями `response.title`, `response.content`, `response.metadata`
+
+**HuggingFaceService** (`shared/src/commonMain/kotlin/com/example/ai_window/service/HuggingFaceService.kt`):
+- Работа с HuggingFace Inference API через прокси
+- Поддержка Chat Completion формата (OpenAI-совместимый)
+- Используется в ModelComparisonViewModel для сравнения моделей
 
 **HistoryCompressionService** (`shared/src/commonMain/kotlin/com/example/ai_window/service/HistoryCompressionService.kt`):
 - Автоматическое сжатие длинных диалогов для экономии токенов
@@ -121,6 +135,53 @@ open iosApp/iosApp.xcodeproj
 2. Разделение истории: старые сообщения → суммаризация, свежие → сохранение
 3. YandexGPT создает краткое резюме (3-5 предложений) с `temperature = 0.3`
 4. Замена: старые сообщения заменяются одним `ChatMessage` с `isSummary = true`
+
+**TemperatureExperimentService** (`shared/src/commonMain/kotlin/com/example/ai_window/service/TemperatureExperimentService.kt`):
+- Сервис для экспериментов с параметром temperature (0.1, 0.6, 0.9)
+- Поддержка параллельных и последовательных запросов
+- Метрики: время выполнения, длина ответа, разнообразие
+
+**ReasoningComparisonService** (`shared/src/commonMain/kotlin/com/example/ai_window/service/ReasoningComparisonService.kt`):
+- Сравнение режимов рассуждения (с/без chain-of-thought)
+- Использует специализированные промпты из `ReasoningPrompts.kt`
+
+**ModelComparisonService** (`shared/src/commonMain/kotlin/com/example/ai_window/service/ModelComparisonService.kt`):
+- Сравнение моделей HuggingFace (Llama 3.2, FLAN-T5)
+- Метрики: время ответа, качество, длина ответа
+
+**RequirementsGatheringService** (`shared/src/commonMain/kotlin/com/example/ai_window/service/RequirementsGatheringService.kt`):
+- Сбор требований через структурированные промпты
+- Использует шаблоны из `RequirementsPrompt.kt`
+
+### Внешняя память (External Memory) - Day 9
+
+**SQLDelight persistence** (`shared/src/commonMain/sqldelight/com/example/ai_window/`):
+- Multiplatform SQLite база данных для сохранения между запусками
+- SQL схема: `ChatMessage.sq`, `ExperimentResult.sq`, `ExpertMessage.sq`
+- Автоматическое сохранение всех сообщений чата
+
+**DatabaseDriverFactory** (expect/actual pattern):
+- Android: `AndroidSqliteDriver` - хранит в app-specific storage
+- iOS: `NativeSqliteDriver` - хранит в app sandbox
+- JVM/Desktop: `JdbcSqliteDriver` - хранит в `~/.ai_window/chat.db`
+- JS/WASM: Не поддерживается (база отключена)
+
+**Repository pattern** (`shared/src/commonMain/kotlin/com/example/ai_window/database/`):
+- `ChatRepository` - CRUD операции для сообщений чата
+- `ExperimentRepository` - сохранение результатов экспериментов
+- `Mappers.kt` - конвертация DB ↔ Domain моделей
+
+**Автосохранение в ChatViewModel**:
+- `init` блок загружает сохраненные сообщения при старте
+- После каждого добавления сообщения автоматически сохраняет в БД
+- `clearChat()` также очищает базу данных
+
+**Расположение БД файлов**:
+- Android: `/data/data/com.example.ai_window/databases/chat.db`
+- iOS: App Sandbox Documents
+- Desktop: `~/.ai_window/chat.db`
+
+### Сжатие истории диалогов (History Compression)
 
 **Поля ChatMessage для сжатия** (`shared/src/commonMain/kotlin/com/example/ai_window/model/ChatMessage.kt`):
 - `isSummary: Boolean` - флаг суммарного сообщения
@@ -147,15 +208,15 @@ open iosApp/iosApp.xcodeproj
 - Платформо-специфичный: `composeApp/src/{androidMain,iosMain,jvmMain,jsMain,wasmJsMain}`
 - Material Design 3 по умолчанию
 
-**Screens и ViewModels**:
+**Screens и ViewModels** (`composeApp/src/commonMain/kotlin/com/example/ai_window/`):
 - `App.kt` - главный Composable с навигацией (tabs для всех режимов)
 - `screens/` - отдельная папка для UI экранов (CompressionComparisonScreen и др.)
-- `ChatViewModel` - базовый чат
-- `PlanningViewModel` - планирование задач с prompt engineering
-- `ReasoningViewModel` - рассуждения с цепочкой мыслей
-- `TemperatureViewModel` - эксперименты с параметром temperature (параллельные/последовательные запросы с разными значениями 0.1, 0.6, 0.9)
-- `ModelComparisonViewModel` - сравнение моделей HuggingFace (day_6: Llama 3.2, FLAN-T5 с метриками производительности и качества)
-- `CompressionComparisonViewModel` - сравнение чата с/без сжатия истории (day_8: параллельные запросы, метрики экономии токенов)
+- `ChatViewModel.kt` - базовый чат
+- `PlanningViewModel.kt` - планирование задач с prompt engineering
+- `ReasoningViewModel.kt` - рассуждения с цепочкой мыслей
+- `TemperatureViewModel.kt` - эксперименты с параметром temperature (параллельные/последовательные запросы с разными значениями 0.1, 0.6, 0.9)
+- `ModelComparisonViewModel.kt` - сравнение моделей HuggingFace (day_6: Llama 3.2, FLAN-T5 с метриками производительности и качества)
+- `CompressionComparisonViewModel.kt` - сравнение чата с/без сжатия истории (day_8: параллельные запросы, метрики экономии токенов)
 
 ### Ktor Server
 
@@ -167,7 +228,10 @@ open iosApp/iosApp.xcodeproj
 **API эндпоинты** (`server/src/main/kotlin/com/example/ai_window/Application.kt`):
 - `GET /` - health check
 - `POST /api/yandex-gpt` - прокси к Yandex API (headers: `X-API-Key`, `X-Folder-Id`)
-- `POST /api/huggingface` - прокси к HuggingFace Inference API (headers: `X-HF-Token`, `X-Model-Id`)
+- `POST /api/huggingface` - прокси к HuggingFace Inference API (headers: `X-HF-Token`)
+  - Использует Chat Completion API: `https://router.huggingface.co/v1/chat/completions`
+  - Поддерживает модели: Llama 3.2, FLAN-T5 и другие
+  - Возвращает OpenAI-совместимый формат с дополнительным полем `executionTime`
 
 ### Добавление новых платформ
 
@@ -201,12 +265,59 @@ open iosApp/iosApp.xcodeproj
 ## Паттерн инкрементальной разработки (day_X)
 
 Проект развивается по паттерну day-by-day экспериментов:
-- **day_6**: Token analysis, ModelComparisonViewModel (Llama 3.2, FLAN-T5)
-- **day_7**: Token analysis (согласно git истории)
+- **day_1**: Первая реализация AI чата с Yandex GPT
+- **day_2**: Структурированные ответы (JSON Schema)
+- **day_3**: Prompt engineering для сбора требований
+- **day_4**: Режим рассуждений (reasoning/chain-of-thought)
+- **day_5**: Эксперименты с temperature
+- **day_6**: Model comparison (HuggingFace: Llama 3.2, FLAN-T5), refactor time utils
+- **day_7**: Token analysis
 - **day_8**: History compression - CompressionComparisonViewModel, HistoryCompressionService, TokenUtils, CompressionStats
+- **day_9**: External memory - SQLDelight persistence, ChatRepository, DatabaseDriverFactory, автосохранение истории чатов
 
-**Принципы**:
+**Принципы разработки**:
 - Каждый "день" = отдельная функциональность/эксперимент
 - Комментарии в коде помечены day_X для отслеживания
 - Новые поля в моделях помечаются как `// Day X: описание`
 - Бранчи именуются `day_X` для изоляции экспериментов
+- Каждая функциональность мержится через Pull Request после завершения
+- Перед началом нового day_X убедитесь, что предыдущий день смержен в main
+
+## Важные детали реализации
+
+### Парсинг JSON ответов от LLM
+
+**ResponseParser** (`shared/src/commonMain/kotlin/com/example/ai_window/model/ResponseSchema.kt`):
+- Два режима парсинга: строгий (`parseStrict`) для native JSON Schema и толерантный (`parse`) для prompt-based
+- Fallback стратегия: пытается извлечь JSON из markdown блоков, текста между фигурными скобками
+- Возвращает `ParseResult.Partial` при частичной валидности (отсутствующие поля заполняются значениями по умолчанию)
+
+### Платформо-специфичные утилиты
+
+**TimeUtils** (`shared/src/commonMain/kotlin/com/example/ai_window/util/TimeUtils.kt`):
+- `expect fun formatTimestamp(timestamp: Long): String` - форматирование времени для каждой платформы
+- Android: `SimpleDateFormat`, iOS: `NSDateFormatter`, JVM: `SimpleDateFormat`, JS/WASM: `Date.toLocaleString()`
+
+**FileExport** (`composeApp/src/commonMain/kotlin/com/example/ai_window/FileExport.kt`):
+- `expect fun exportToFile(content: String, filename: String)` - экспорт в файл для каждой платформы
+- Android: `ContentResolver` + `MediaStore`, iOS: `UIActivityViewController`, JVM: `JFileChooser`, Web: download через blob URL
+
+### expect/actual паттерн
+
+При добавлении новых платформо-специфичных функций:
+1. Объявите `expect` в `commonMain`
+2. Реализуйте `actual` в **каждом** sourceSet: `androidMain`, `iosMain`, `jvmMain`, `jsMain`, `wasmJsMain`
+3. Проверьте компиляцию всех платформ: `./gradlew build`
+
+### Управление зависимостями
+
+- Версии в `gradle/libs.versions.toml` (Catalog approach)
+- Обновление версий: редактировать `[versions]` секцию
+- Синхронизация Gradle: `./gradlew --refresh-dependencies`
+
+### Работа с CORS и прокси-сервером
+
+При разработке frontend/backend:
+1. Сначала запустите сервер: `./gradlew :server:run` (порт 8080)
+2. Затем запустите клиентское приложение
+3. В продакшене настройте конкретные CORS хосты в `server/src/main/kotlin/com/example/ai_window/Application.kt:34`
