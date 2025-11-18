@@ -18,6 +18,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ai_window.model.ChatMessage
 import com.example.ai_window.model.ChatState
 import com.example.ai_window.screens.CompressionComparisonScreen
+import com.example.ai_window.screens.McpScreen
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 @Composable
@@ -80,6 +81,11 @@ fun App() {
             )
         }
 
+        // Day 10: MCP ViewModel
+        val mcpViewModel: McpViewModel = viewModel {
+            McpViewModel()
+        }
+
         Column(modifier = Modifier.fillMaxSize()) {
             // Navigation tabs
             NavigationBar(
@@ -95,6 +101,7 @@ fun App() {
                 Screen.Temperature -> TemperatureScreen(temperatureViewModel)
                 Screen.ModelComparison -> ModelComparisonScreen(modelComparisonViewModel)
                 Screen.Compression -> CompressionComparisonScreen(compressionComparisonViewModel)
+                Screen.Mcp -> McpScreen(mcpViewModel) // Day 10
             }
         }
     }
@@ -107,7 +114,8 @@ enum class Screen(val displayName: String, val icon: String) {
     Reasoning("Рассуждение", "🧠"),
     Temperature("Температура", "🌡️"),
     ModelComparison("Модели HF", "🤖"),
-    Compression("Сжатие", "🗜️")
+    Compression("Сжатие", "🗜️"),
+    Mcp("MCP", "🔌") // Day 10
 }
 
 @Composable

@@ -25,6 +25,10 @@ dependencies {
     implementation(libs.ktor.clientContentNegotiation)
     implementation(libs.ktor.serializationJson)
     implementation(libs.kotlinx.serialization.json)
+
+    // Day 10: MCP integration
+    implementation(libs.mcp.kotlin.sdk)
+
     testImplementation(libs.ktor.serverTestHost)
     testImplementation(libs.kotlin.testJunit)
 }
