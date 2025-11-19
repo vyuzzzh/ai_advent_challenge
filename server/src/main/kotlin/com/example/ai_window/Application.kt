@@ -2,6 +2,13 @@ package com.example.ai_window
 
 import com.example.ai_window.model.YandexGptRequest
 import com.example.ai_window.model.YandexGptResponse
+import com.example.ai_window.model.McpServerInfo
+import com.example.ai_window.model.McpTool
+import com.example.ai_window.model.McpResource
+import com.example.ai_window.model.McpPrompt
+import com.example.ai_window.model.ToolExecutionRequest
+import com.example.ai_window.mcp.SimpleMcpServer
+import com.example.ai_window.tools.GitToolExecutor
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.cio.*
@@ -17,6 +24,8 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 fun main() {
     embeddedServer(Netty, port = SERVER_PORT, host = "0.0.0.0", module = Application::module)
@@ -53,6 +62,12 @@ fun Application.module() {
             })
         }
     }
+
+    // Day 10: Инициализация упрощенного MCP сервера
+    SimpleMcpServer.initialize()
+
+    // Day 11: Инициализация Git Tool Executor
+    val gitToolExecutor = GitToolExecutor()
 
     routing {
         get("/") {
@@ -176,6 +191,89 @@ fun Application.module() {
                     com.example.ai_window.model.HuggingFaceResponse(
                         error = "Server error: ${e.message}"
                     )
+                )
+            }
+        }
+
+        // Day 10: MCP REST API endpoints для UI
+        get("/api/mcp/info") {
+            try {
+                val mcpInfo = McpServerInfo(
+                    serverName = "ai-window-mcp-server",
+                    version = "1.0.0",
+                    tools = SimpleMcpServer.tools.map { tool ->
+                        McpTool(
+                            name = tool.name,
+                            description = tool.description,
+                            parameters = tool.parameters,
+                            category = tool.category,
+                            inputSchema = buildJsonObject {
+                                put("type", "object")
+                                put("parameters", tool.parameters.joinToString(", "))
+                                put("category", tool.category)
+                            }
+                        )
+                    },
+                    resources = SimpleMcpServer.resources.map { resource ->
+                        McpResource(
+                            uri = resource.uri,
+                            name = resource.name,
+                            description = resource.description,
+                            mimeType = "text/plain"
+                        )
+                    },
+                    prompts = emptyList()
+                )
+
+                call.respond(mcpInfo)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                call.respond(
+                    HttpStatusCode.InternalServerError,
+                    mapOf("error" to (e.message ?: "Unknown error"))
+                )
+            }
+        }
+
+        get("/api/mcp/tools") {
+            try {
+                call.respond(
+                    mapOf(
+                        "count" to SimpleMcpServer.tools.size.toString(),
+                        "tools" to SimpleMcpServer.tools.map { tool ->
+                            mapOf(
+                                "name" to tool.name,
+                                "description" to tool.description,
+                                "parameters" to tool.parameters.joinToString(", "),
+                                "category" to tool.category
+                            )
+                        }.toString()
+                    )
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+                call.respond(
+                    HttpStatusCode.InternalServerError,
+                    mapOf("error" to (e.message ?: "Unknown error"))
+                )
+            }
+        }
+
+        // Day 11: Endpoint для выполнения MCP tools
+        post("/api/tools/execute") {
+            try {
+                val request = call.receive<ToolExecutionRequest>()
+
+                println("[API] Executing tool: ${request.tool} with params: ${request.params}")
+
+                val result = gitToolExecutor.execute(request.tool, request.params)
+
+                call.respond(result)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                call.respond(
+                    HttpStatusCode.InternalServerError,
+                    mapOf("error" to (e.message ?: "Unknown error"))
                 )
             }
         }
